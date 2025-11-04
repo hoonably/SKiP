@@ -140,19 +140,35 @@ class ProbSVM(BaseEstimator, ClassifierMixin):
         Q = 0.5 * (Q + Q.T) + 1e-9 * np.eye(n)
 
         alpha = cp.Variable(n)
-        objective = cp.Minimize(0.5 * cp.quad_form(alpha, Q) - cp.sum(alpha))
+        try:
+            objective = cp.Minimize(0.5 * cp.quad_form(alpha, Q) - cp.sum(alpha))
 
-        constraints = [alpha >= 0, alpha <= C * p_i]
-        if self.fit_intercept:
-            constraints.append(cp.sum(cp.multiply(alpha, y_label)) == 0)
+            constraints = [alpha >= 0, alpha <= C * p_i]
+            if self.fit_intercept:
+                constraints.append(cp.sum(cp.multiply(alpha, y_label)) == 0)
 
-        prob = cp.Problem(objective, constraints)
-        prob.solve(
-            solver=cp.OSQP,
-            eps_abs=1e-6,
-            eps_rel=1e-6,
-            verbose=self.verbose
-        )
+            prob = cp.Problem(objective, constraints)
+            prob.solve(
+                solver=cp.OSQP,
+                eps_abs=1e-6,
+                eps_rel=1e-6,
+                verbose=self.verbose
+            )
+        except cp.error.DCPError:
+            # Use psd_wrap to ensure Q is treated as PSD for DCP compliance
+            objective = cp.Minimize(0.5 * cp.quad_form(alpha, cp.psd_wrap(Q)) - cp.sum(alpha))
+
+            constraints = [alpha >= 0, alpha <= C * p_i]
+            if self.fit_intercept:
+                constraints.append(cp.sum(cp.multiply(alpha, y_label)) == 0)
+
+            prob = cp.Problem(objective, constraints)
+            prob.solve(
+                solver=cp.OSQP,
+                eps_abs=1e-6,
+                eps_rel=1e-6,
+                verbose=self.verbose
+            )
 
         a = np.asarray(alpha.value).ravel()
         a = np.clip(a, 0.0, C * p_i)
