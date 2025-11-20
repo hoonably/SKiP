@@ -437,5 +437,6 @@ class SKiP(NaiveSVM):
         self.alphas_ = a
         self.w_i_ = w_i
         self.p_i_ = p_i
+        
 
         return self
