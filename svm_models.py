@@ -379,7 +379,7 @@ class KNNSVM(NaiveSVM):
 
 class SKiP(NaiveSVM):
 
-    def __init__(self, C=1.0, fit_intercept=True, verbose=False, tol=1e-6, k=5, metric='euclidean', combine_method='multiply', scaling='minmax', kernel='linear', gamma='scale'):
+    def __init__(self, C=1.0, fit_intercept=True, verbose=False, tol=1e-6, k=5, metric='euclidean', combine_method='multiply', scaling=None, kernel='linear', gamma='scale'):
         super().__init__(C=C, fit_intercept=fit_intercept, verbose=verbose, tol=tol, kernel=kernel, gamma=gamma)
         self.k = int(k)
         self.metric = metric

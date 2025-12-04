@@ -40,21 +40,19 @@ def download_iris_2feat(save_dir):
 
 
 def download_titanic(save_dir):
-    # Download Titanic dataset from direct URL
+    # Use local titanic.zip file
     import tempfile
     import zipfile
-    import urllib.request
     
-    # URL for Titanic dataset (Kaggle)
-    url = "https://storage.googleapis.com/kaggle-competitions-data/kaggle-v2/3136/26502/bundle/archive.zip?GoogleAccessId=web-data@kaggle-161607.iam.gserviceaccount.com&Expires=1764787287&Signature=WvfevLPqaog3TKaMT%2FGmNBnlye%2BcMEsZqroon4Q4t9K4fV6q2Nz1JP0U985KjvudQhzmu%2FHpYZ0CGaUULl1GZ4oVAgK%2BTgZ2MsOtU1qvnvzdDlfhtGXrqHpU15DcdzXbSQIwymrgqgUNebRKQwmQayytx6jIUw4BhAvHDByT%2B3UCd2sNA7YcELwI0N5Y386uctU6QIsCrYLxaOoK%2F%2B8AaoNPYo8A%2BqohHGHgVZJN77I7VP17KtzvFe0Qam1doAorP%2FW%2Bd4KuXoemmCK0xqhW0EvRIwQTQ6f2ojDY3O5o0ni9PGeiPEV4Fl2v0NmEOzVKNo1pBGf9qw6l0QZevXdx3g%3D%3D&response-content-disposition=attachment%3B+filename%3Dtitanic.zip"
+    # Path to local titanic.zip in the same directory as this script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    zip_path = os.path.join(script_dir, "titanic.zip")
+    
+    if not os.path.exists(zip_path):
+        raise FileNotFoundError(f"titanic.zip not found at {zip_path}")
     
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Download dataset from URL
-        # print("Downloading Titanic dataset from URL...")
-        zip_path = os.path.join(tmpdir, "titanic.zip")
-        urllib.request.urlretrieve(url, zip_path)
-        
-        # Unzip the downloaded file
+        # Unzip the local file
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(tmpdir)
         
