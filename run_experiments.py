@@ -66,13 +66,13 @@ label_noise_levels = [0.0, 0.05, 0.10, 0.15, 0.20]
 def load_dataset(dataset_name, feature_noise_level=None, label_noise=0.0, random_state=42):
     """
     Load dataset from npz file and inject label noise.
-    
+
     Parameters:
     - dataset_name: Name of the dataset ('breast_cancer', 'iris_2feat', 'titanic', 'wine')
     - feature_noise_level: None for clean data, or '5%', '10%', '15%', '20%' for pre-generated feature noise
     - label_noise: Proportion of labels to flip (0.0 to 1.0)
     - random_state: Random seed for reproducibility
-    
+
     Returns:
     - X_train, X_test, y_train, y_test (all scaled)
     """
@@ -80,26 +80,26 @@ def load_dataset(dataset_name, feature_noise_level=None, label_noise=0.0, random
         file_path = datasets_config[dataset_name]['clean']
     else:
         file_path = datasets_config[dataset_name]['noisy'][feature_noise_level]
-    
+
     data = np.load(file_path)
     X = data['X_train']  # The full dataset is stored as X_train
     y = data['y_train']  # The full labels are stored as y_train
-    
+
     # Inject label noise if needed
     if label_noise > 0:
         X, y = inject_noise(X, y, feature_noise=0.0, label_noise=label_noise, 
                            random_state=random_state, add_label_noise=False)
-    
+
     # Train-test split
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, stratify=y, random_state=random_state
     )
-    
+
     # Standardization
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
-    
+
     return X_train_scaled, X_test_scaled, y_train, y_test
 
 
@@ -107,24 +107,24 @@ def run_single_experiment(args):
     """
     Run a single experiment with given configuration.
     Designed to be called by multiprocessing.
-    
+
     Parameters:
     - args: Tuple of (dataset_name, feature_noise_level, label_noise, random_state)
-    
+
     Returns:
     - List of result dictionaries for this configuration
     """
     dataset_name, feature_noise_level, label_noise, random_state = args
-    
+
     # Load data with feature noise and inject label noise
     X_train, X_test, y_train, y_test = load_dataset(dataset_name, feature_noise_level, label_noise, random_state)
-    
+
     results = []
     feature_noise_str = "Clean" if feature_noise_level is None else feature_noise_level
     label_noise_str = f"{int(label_noise * 100)}%"
-    
-    print(f"Processing: {dataset_name} | Feature: {feature_noise_str} | Label: {label_noise_str}")
-    
+
+    print(f"Starting: {dataset_name} | Feature: {feature_noise_str} | Label: {label_noise_str}")
+
     # Test each model with different C values
     for C in C_values:
         # NaiveSVM
@@ -142,7 +142,7 @@ def run_single_experiment(args):
             'Train Acc': train_acc,
             'Test Acc': test_acc
         })
-        
+
         # ProbSVM
         clf = OneVsRestSVM(ProbSVM(C=C, kernel='linear', verbose=False))
         clf.fit(X_train, y_train)
@@ -158,7 +158,7 @@ def run_single_experiment(args):
             'Train Acc': train_acc,
             'Test Acc': test_acc
         })
-    
+
     # Test KNN-based models with different C and k values
     for C in C_values:
         for k in k_values:
@@ -177,7 +177,7 @@ def run_single_experiment(args):
                 'Train Acc': train_acc,
                 'Test Acc': test_acc
             })
-            
+
             # SKiP - multiply
             clf = OneVsRestSVM(SKiP(C=C, k=k, kernel='linear', verbose=False, combine_method='multiply'))
             clf.fit(X_train, y_train)
@@ -241,7 +241,8 @@ def run_single_experiment(args):
                 'Train Acc': train_acc,
                 'Test Acc': test_acc
             })
-    
+
+    print(f"Completed: {dataset_name} | Feature: {feature_noise_str} | Label: {label_noise_str} | Total results: {len(results)}")
     return results
 
 
@@ -256,41 +257,41 @@ def main():
     print(f"Models: NaiveSVM, ProbSVM, KNNSVM, SKiP (4 variants)")
     print(f"C values: {C_values}")
     print(f"k values: {k_values}")
-    
+
     # Calculate total experiments
     num_base_models = len(C_values) * 2  # NaiveSVM, ProbSVM
     num_knn_models = len(C_values) * len(k_values) * 5  # KNNSVM + 4 SKiP variants
     total_per_noise_combo = num_base_models + num_knn_models
     total_experiments = total_per_noise_combo * len(feature_noise_levels) * len(label_noise_levels) * len(datasets_config)
-    
+
     # Get number of CPUs
     n_cpus = cpu_count()
     print(f"\nTotal experiments: {total_experiments}")
     print(f"CPUs available: {n_cpus}")
     print(f"Using {n_cpus} parallel processes")
     print("\nStarting experiments...\n")
-    
+
     # Prepare all experiment configurations
     experiment_configs = []
     for dataset_name in ['breast_cancer', 'iris_2feat', 'titanic', 'wine']:
         for feature_noise_level in feature_noise_levels:
             for label_noise in label_noise_levels:
                 experiment_configs.append((dataset_name, feature_noise_level, label_noise, 42))
-    
+
     print(f"Total configurations to process: {len(experiment_configs)}\n")
-    
+
     # Run experiments in parallel
     with Pool(processes=n_cpus) as pool:
         all_results_list = pool.map(run_single_experiment, experiment_configs)
-    
+
     # Flatten results list
     all_results = []
     for results in all_results_list:
         all_results.extend(results)
-    
+
     # Convert to DataFrame
     df_all_results = pd.DataFrame(all_results)
-    
+
     print(f"\n\n{'='*70}")
     print(f"ALL EXPERIMENTS COMPLETED")
     print(f"{'='*70}")
@@ -299,16 +300,16 @@ def main():
     print(f"Models: {df_all_results['Model'].nunique()}")
     print(f"Feature noise levels: {df_all_results['Feature_Noise'].nunique()}")
     print(f"Label noise levels: {df_all_results['Label_Noise'].nunique()}")
-    
+
     # Save results to CSV
     output_filename = 'model_comparison_results.csv'
     df_all_results.to_csv(output_filename, index=False)
     print(f"\n✓ Results saved to {output_filename}")
-    
+
     # Display sample results
     print(f"\nSample results:")
     print(df_all_results.head(10))
-    
+
     # Display basic statistics
     print(f"\n\nDataset statistics:")
     print(df_all_results.groupby('Dataset').size())
