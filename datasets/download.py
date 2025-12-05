@@ -4,6 +4,8 @@ import os
 import numpy as np
 import pandas as pd
 from sklearn.datasets import load_wine, load_breast_cancer, load_iris
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 
 
 def save_npz(path, X, y):
@@ -17,11 +19,27 @@ def save_npz(path, X, y):
         print("Check:", tmp["X_train"].shape, tmp["y_train"].shape, " | unique labels:", len(np.unique(tmp["y_train"])))
 
 
+def apply_pca(X, n_components=0.95):
+    """Apply PCA to reduce dimensionality to n_components"""
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    pca = PCA(n_components=n_components)
+    X_pca = pca.fit_transform(X_scaled)
+    print(f"\nApplied PCA: reduced to {pca.n_components_} dimensions.")
+    print(f"PCA explained variance ratio: {pca.explained_variance_ratio_}")
+    return X_pca
+
+
 def download_wine(save_dir):
     wine = load_wine()
     X, y = wine.data, wine.target
     path = os.path.join(save_dir, "wine", "wine.npz")
     save_npz(path, X, y)
+    
+    # PCA version
+    X_pca = apply_pca(X)
+    path_pca = os.path.join(save_dir, "wine_pca", "wine_pca.npz")
+    save_npz(path_pca, X_pca, y)
 
 
 def download_breast_cancer(save_dir):
@@ -29,14 +47,24 @@ def download_breast_cancer(save_dir):
     X, y = data.data, data.target
     path = os.path.join(save_dir, "breast_cancer", "breast_cancer.npz")
     save_npz(path, X, y)
+    
+    # PCA version
+    X_pca = apply_pca(X)
+    path_pca = os.path.join(save_dir, "breast_cancer_pca", "breast_cancer_pca.npz")
+    save_npz(path_pca, X_pca, y)
 
 
-def download_iris_2feat(save_dir):
+def download_iris(save_dir):
     iris = load_iris()
-    X = iris.data[:, :2]   # only first two features
+    X = iris.data
     y = iris.target
-    path = os.path.join(save_dir, "iris_2feat", "iris_2feat.npz")
+    path = os.path.join(save_dir, "iris", "iris.npz")
     save_npz(path, X, y)
+    
+    # PCA version
+    X_pca = apply_pca(X)
+    path_pca = os.path.join(save_dir, "iris_pca", "iris_pca.npz")
+    save_npz(path_pca, X_pca, y)
 
 
 def download_titanic(save_dir):
@@ -89,6 +117,11 @@ def download_titanic(save_dir):
     
     path = os.path.join(save_dir, "titanic", "titanic.npz")
     save_npz(path, X, y)
+    
+    # PCA version
+    X_pca = apply_pca(X)
+    path_pca = os.path.join(save_dir, "titanic_pca", "titanic_pca.npz")
+    save_npz(path_pca, X_pca, y)
 
 
 def main():
@@ -97,7 +130,7 @@ def main():
 
     download_wine(save_dir)
     download_breast_cancer(save_dir)
-    download_iris_2feat(save_dir)
+    download_iris(save_dir)
     download_titanic(save_dir)
 
 

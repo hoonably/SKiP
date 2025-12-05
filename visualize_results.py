@@ -11,7 +11,7 @@ os.makedirs(output_dir, exist_ok=True)
 df_all_results = pd.read_csv('model_comparison_results.csv')
 
 # Create heatmaps for each dataset showing noise impact on best model performance
-for dataset_name in ['breast_cancer', 'iris_2feat', 'titanic', 'wine']:
+for dataset_name in ['breast_cancer', 'breast_cancer_pca', 'iris', 'iris_pca', 'titanic', 'titanic_pca', 'wine', 'wine_pca']:
     dataset_results = df_all_results[df_all_results['Dataset'] == dataset_name]
 
     # Skip if dataset not found
@@ -28,18 +28,19 @@ for dataset_name in ['breast_cancer', 'iris_2feat', 'titanic', 'wine']:
     main_models = ['NaiveSVM', 'ProbSVM', 'KNNSVM', None,
                    'SKiP-multiply', 'SKiP-multiply-minmax',
                    'SKiP-average', 'SKiP-average-minmax']
+    
+    # Create separate figures for each kernel
+    for kernel in ['linear', 'rbf']:
+        fig, axes = plt.subplots(2, 4, figsize=(20, 10))
+        axes = axes.ravel()
 
-    fig, axes = plt.subplots(2, 4, figsize=(20, 10))
-    axes = axes.ravel()
+        for idx, model in enumerate(main_models):
+            if model is None:
+                axes[idx].set_visible(False)
+                continue
 
-    for idx, model in enumerate(main_models):
-        if model is None:
-            axes[idx].set_visible(False)
-            continue
-
-        model_data = best_per_combo[best_per_combo['Model'] == model]
-
-        # Create pivot table
+            model_data = best_per_combo[(best_per_combo['Model'] == model) & 
+                                       (best_per_combo['Kernel'] == kernel)]        # Create pivot table
         pivot = model_data.pivot_table(
             values='Test Acc',
             index='Label_Noise',
@@ -69,19 +70,21 @@ for dataset_name in ['breast_cancer', 'iris_2feat', 'titanic', 'wine']:
                     text = ax.text(j, i, f'{pivot.values[i, j]:.3f}',
                                  ha='center', va='center', color='black', fontsize=7)
 
-        ax.set_title(f'{model}', fontsize=11, fontweight='bold')
-        ax.set_xlabel('Feature Noise', fontsize=9)
-        ax.set_ylabel('Label Noise', fontsize=9)
+            ax.set_title(f'{model}', fontsize=11, fontweight='bold')
+            ax.set_xlabel('Feature Noise', fontsize=9)
+            ax.set_ylabel('Label Noise', fontsize=9)
 
 
-    # Add colorbar
-    cbar_ax = fig.add_axes([0.80, 0.53, 0.015, 0.4])  
-    fig.colorbar(im, cax=cbar_ax, orientation='vertical', label='Test Accuracy')
+        # Add colorbar
+        cbar_ax = fig.add_axes([0.785, 0.53, 0.015, 0.4])  
+        fig.colorbar(im, cax=cbar_ax, orientation='vertical', label='Test Accuracy')
 
-    plt.suptitle(f'Noise Impact on Test Accuracy - {dataset_name.upper()}', 
-                 fontsize=15, fontweight='bold')
-    plt.tight_layout()
-    output_path = os.path.join(output_dir, f'noise_heatmap_{dataset_name}.png')
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
-    plt.show()
-    print(f"Saved heatmap for {dataset_name} to {output_path}")
+        plt.suptitle(f'Noise Impact on Test Accuracy - {dataset_name.upper()} ({kernel.upper()} Kernel)', 
+                     fontsize=15, fontweight='bold')
+        plt.tight_layout()
+        output_path_png = os.path.join(output_dir, f'noise_heatmap_{dataset_name}_{kernel}.png')
+        output_path_pdf = os.path.join(output_dir, f'noise_heatmap_{dataset_name}_{kernel}.pdf')
+        plt.savefig(output_path_png, dpi=300, bbox_inches='tight')
+        plt.savefig(output_path_pdf, bbox_inches='tight')
+        plt.show()
+        print(f"Saved heatmap for {dataset_name} ({kernel}) to {output_path_png} and {output_path_pdf}")

@@ -1,4 +1,8 @@
 breast_cancer/
-iris_2feat/
+breast_cancer_pca/
+iris/
+iris_pca/
 wine/
+wine_pca/
 titanic/
+titanic_pca/

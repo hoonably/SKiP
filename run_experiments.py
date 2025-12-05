@@ -8,10 +8,9 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from datasets import inject_noise
-from svm_models import NaiveSVM, ProbSVM, KNNSVM, SKiP
-from multi_svm import OneVsRestSVM
+from models.svm_models import NaiveSVM, ProbSVM, KNNSVM, SKiP
+from models.multi_svm import OneVsRestSVM
 from multiprocessing import Pool, cpu_count
-from functools import partial
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -27,13 +26,31 @@ datasets_config = {
             '20%': 'datasets/breast_cancer/fast_breast_cancer_type1_boundary_20pct.npz',
         }
     },
-    'iris_2feat': {
-        'clean': 'datasets/iris_2feat/iris_2feat.npz',
+    'breast_cancer_pca': {
+        'clean': 'datasets/breast_cancer_pca/breast_cancer_pca.npz',
         'noisy': {
-            '5%': 'datasets/iris_2feat/fast_iris_2feat_type1_boundary_5pct.npz',
-            '10%': 'datasets/iris_2feat/fast_iris_2feat_type1_boundary_10pct.npz',
-            '15%': 'datasets/iris_2feat/fast_iris_2feat_type1_boundary_15pct.npz',
-            '20%': 'datasets/iris_2feat/fast_iris_2feat_type1_boundary_20pct.npz',
+            '5%': 'datasets/breast_cancer_pca/fast_breast_cancer_pca_type1_boundary_5pct.npz',
+            '10%': 'datasets/breast_cancer_pca/fast_breast_cancer_pca_type1_boundary_10pct.npz',
+            '15%': 'datasets/breast_cancer_pca/fast_breast_cancer_pca_type1_boundary_15pct.npz',
+            '20%': 'datasets/breast_cancer_pca/fast_breast_cancer_pca_type1_boundary_20pct.npz',
+        }
+    },
+    'iris': {
+        'clean': 'datasets/iris/iris.npz',
+        'noisy': {
+            '5%': 'datasets/iris/fast_iris_type1_boundary_5pct.npz',
+            '10%': 'datasets/iris/fast_iris_type1_boundary_10pct.npz',
+            '15%': 'datasets/iris/fast_iris_type1_boundary_15pct.npz',
+            '20%': 'datasets/iris/fast_iris_type1_boundary_20pct.npz',
+        }
+    },
+    'iris_pca': {
+        'clean': 'datasets/iris_pca/iris_pca.npz',
+        'noisy': {
+            '5%': 'datasets/iris_pca/fast_iris_pca_type1_boundary_5pct.npz',
+            '10%': 'datasets/iris_pca/fast_iris_pca_type1_boundary_10pct.npz',
+            '15%': 'datasets/iris_pca/fast_iris_pca_type1_boundary_15pct.npz',
+            '20%': 'datasets/iris_pca/fast_iris_pca_type1_boundary_20pct.npz',
         }
     },
     'titanic': {
@@ -45,6 +62,15 @@ datasets_config = {
             '20%': 'datasets/titanic/fast_titanic_type1_boundary_20pct.npz',
         }
     },
+    'titanic_pca': {
+        'clean': 'datasets/titanic_pca/titanic_pca.npz',
+        'noisy': {
+            '5%': 'datasets/titanic_pca/fast_titanic_pca_type1_boundary_5pct.npz',
+            '10%': 'datasets/titanic_pca/fast_titanic_pca_type1_boundary_10pct.npz',
+            '15%': 'datasets/titanic_pca/fast_titanic_pca_type1_boundary_15pct.npz',
+            '20%': 'datasets/titanic_pca/fast_titanic_pca_type1_boundary_20pct.npz',
+        }
+    },
     'wine': {
         'clean': 'datasets/wine/wine.npz',
         'noisy': {
@@ -53,12 +79,22 @@ datasets_config = {
             '15%': 'datasets/wine/fast_wine_type1_boundary_15pct.npz',
             '20%': 'datasets/wine/fast_wine_type1_boundary_20pct.npz',
         }
+    },
+    'wine_pca': {
+        'clean': 'datasets/wine_pca/wine_pca.npz',
+        'noisy': {
+            '5%': 'datasets/wine_pca/fast_wine_pca_type1_boundary_5pct.npz',
+            '10%': 'datasets/wine_pca/fast_wine_pca_type1_boundary_10pct.npz',
+            '15%': 'datasets/wine_pca/fast_wine_pca_type1_boundary_15pct.npz',
+            '20%': 'datasets/wine_pca/fast_wine_pca_type1_boundary_20pct.npz',
+        }
     }
 }
 
 # Experiment configurations
 C_values = [0.1, 1.0, 10.0, 100.0, 1000.0, 10000.0]
-k_values = [3, 5, 7]
+k_values = [3, 5, 7, 10, 15]
+kernels = ['linear', 'rbf']
 feature_noise_levels = [None, '5%', '10%', '15%', '20%']  # None = clean data
 label_noise_levels = [0.0, 0.05, 0.10, 0.15, 0.20]
 
@@ -68,7 +104,7 @@ def load_dataset(dataset_name, feature_noise_level=None, label_noise=0.0, random
     Load dataset from npz file and inject label noise.
 
     Parameters:
-    - dataset_name: Name of the dataset ('breast_cancer', 'iris_2feat', 'titanic', 'wine')
+    - dataset_name: Name of the dataset ('breast_cancer', 'breast_cancer_pca', 'iris', 'iris_pca', 'titanic', 'titanic_pca', 'wine', 'wine_pca')
     - feature_noise_level: None for clean data, or '5%', '10%', '15%', '20%' for pre-generated feature noise
     - label_noise: Proportion of labels to flip (0.0 to 1.0)
     - random_state: Random seed for reproducibility
@@ -109,12 +145,12 @@ def run_single_experiment(args):
     Designed to be called by multiprocessing.
 
     Parameters:
-    - args: Tuple of (dataset_name, feature_noise_level, label_noise, random_state)
+    - args: Tuple of (dataset_name, feature_noise_level, label_noise, random_state, idx, total)
 
     Returns:
     - List of result dictionaries for this configuration
     """
-    dataset_name, feature_noise_level, label_noise, random_state = args
+    dataset_name, feature_noise_level, label_noise, random_state, idx, total = args
 
     # Load data with feature noise and inject label noise
     X_train, X_test, y_train, y_test = load_dataset(dataset_name, feature_noise_level, label_noise, random_state)
@@ -123,47 +159,13 @@ def run_single_experiment(args):
     feature_noise_str = "Clean" if feature_noise_level is None else feature_noise_level
     label_noise_str = f"{int(label_noise * 100)}%"
 
-    print(f"Starting: {dataset_name} | Feature: {feature_noise_str} | Label: {label_noise_str}")
+    print(f"[{idx}/{total}] Starting: {dataset_name} | Feature: {feature_noise_str} | Label: {label_noise_str}")
 
-    # Test each model with different C values
-    for C in C_values:
-        # NaiveSVM
-        clf = OneVsRestSVM(NaiveSVM(C=C, kernel='linear', verbose=False))
-        clf.fit(X_train, y_train)
-        train_acc = (clf.predict(X_train) == y_train).mean()
-        test_acc = (clf.predict(X_test) == y_test).mean()
-        results.append({
-            'Dataset': dataset_name,
-            'Feature_Noise': feature_noise_str,
-            'Label_Noise': label_noise_str,
-            'Model': 'NaiveSVM',
-            'C': C,
-            'k': None,
-            'Train Acc': train_acc,
-            'Test Acc': test_acc
-        })
-
-        # ProbSVM
-        clf = OneVsRestSVM(ProbSVM(C=C, kernel='linear', verbose=False))
-        clf.fit(X_train, y_train)
-        train_acc = (clf.predict(X_train) == y_train).mean()
-        test_acc = (clf.predict(X_test) == y_test).mean()
-        results.append({
-            'Dataset': dataset_name,
-            'Feature_Noise': feature_noise_str,
-            'Label_Noise': label_noise_str,
-            'Model': 'ProbSVM',
-            'C': C,
-            'k': None,
-            'Train Acc': train_acc,
-            'Test Acc': test_acc
-        })
-
-    # Test KNN-based models with different C and k values
-    for C in C_values:
-        for k in k_values:
-            # KNNSVM
-            clf = OneVsRestSVM(KNNSVM(C=C, k=k, kernel='linear', verbose=False))
+    # Test each model with different C values and kernels
+    for kernel in kernels:
+        for C in C_values:
+            # NaiveSVM
+            clf = OneVsRestSVM(NaiveSVM(C=C, kernel=kernel, verbose=False))
             clf.fit(X_train, y_train)
             train_acc = (clf.predict(X_train) == y_train).mean()
             test_acc = (clf.predict(X_test) == y_test).mean()
@@ -171,15 +173,16 @@ def run_single_experiment(args):
                 'Dataset': dataset_name,
                 'Feature_Noise': feature_noise_str,
                 'Label_Noise': label_noise_str,
-                'Model': 'KNNSVM',
+                'Model': 'NaiveSVM',
+                'Kernel': kernel,
                 'C': C,
-                'k': k,
+                'k': None,
                 'Train Acc': train_acc,
                 'Test Acc': test_acc
             })
 
-            # SKiP - multiply
-            clf = OneVsRestSVM(SKiP(C=C, k=k, kernel='linear', verbose=False, combine_method='multiply'))
+            # ProbSVM
+            clf = OneVsRestSVM(ProbSVM(C=C, kernel=kernel, verbose=False))
             clf.fit(X_train, y_train)
             train_acc = (clf.predict(X_train) == y_train).mean()
             test_acc = (clf.predict(X_test) == y_test).mean()
@@ -187,62 +190,105 @@ def run_single_experiment(args):
                 'Dataset': dataset_name,
                 'Feature_Noise': feature_noise_str,
                 'Label_Noise': label_noise_str,
-                'Model': 'SKiP-multiply',
+                'Model': 'ProbSVM',
+                'Kernel': kernel,
                 'C': C,
-                'k': k,
+                'k': None,
                 'Train Acc': train_acc,
                 'Test Acc': test_acc
             })
 
-            # SKiP - multiply (min-max scaling)
-            clf = OneVsRestSVM(SKiP(C=C, k=k, kernel='linear', verbose=False, combine_method='multiply', scaling='minmax'))
-            clf.fit(X_train, y_train)
-            train_acc = (clf.predict(X_train) == y_train).mean()
-            test_acc = (clf.predict(X_test) == y_test).mean()
-            results.append({
-                'Dataset': dataset_name,
-                'Feature_Noise': feature_noise_str,
-                'Label_Noise': label_noise_str,
-                'Model': 'SKiP-multiply-minmax',
-                'C': C,
-                'k': k,
-                'Train Acc': train_acc,
-                'Test Acc': test_acc
-            })
+    # Test KNN-based models with different C, k values and kernels
+    for kernel in kernels:
+        for C in C_values:
+            for k in k_values:
+                # KNNSVM
+                clf = OneVsRestSVM(KNNSVM(C=C, k=k, kernel=kernel, verbose=False))
+                clf.fit(X_train, y_train)
+                train_acc = (clf.predict(X_train) == y_train).mean()
+                test_acc = (clf.predict(X_test) == y_test).mean()
+                results.append({
+                    'Dataset': dataset_name,
+                    'Feature_Noise': feature_noise_str,
+                    'Label_Noise': label_noise_str,
+                    'Model': 'KNNSVM',
+                    'Kernel': kernel,
+                    'C': C,
+                    'k': k,
+                    'Train Acc': train_acc,
+                    'Test Acc': test_acc
+                })
 
-            # SKiP - average
-            clf = OneVsRestSVM(SKiP(C=C, k=k, kernel='linear', verbose=False, combine_method='average'))
-            clf.fit(X_train, y_train)
-            train_acc = (clf.predict(X_train) == y_train).mean()
-            test_acc = (clf.predict(X_test) == y_test).mean()
-            results.append({
-                'Dataset': dataset_name,
-                'Feature_Noise': feature_noise_str,
-                'Label_Noise': label_noise_str,
-                'Model': 'SKiP-average',
-                'C': C,
-                'k': k,
-                'Train Acc': train_acc,
-                'Test Acc': test_acc
-            })
+                # SKiP - multiply
+                clf = OneVsRestSVM(SKiP(C=C, k=k, kernel=kernel, verbose=False, combine_method='multiply'))
+                clf.fit(X_train, y_train)
+                train_acc = (clf.predict(X_train) == y_train).mean()
+                test_acc = (clf.predict(X_test) == y_test).mean()
+                results.append({
+                    'Dataset': dataset_name,
+                    'Feature_Noise': feature_noise_str,
+                    'Label_Noise': label_noise_str,
+                    'Model': 'SKiP-multiply',
+                    'Kernel': kernel,
+                    'C': C,
+                    'k': k,
+                    'Train Acc': train_acc,
+                    'Test Acc': test_acc
+                })
 
-            # SKiP - average (min-max scaling)
-            clf = OneVsRestSVM(SKiP(C=C, k=k, kernel='linear', verbose=False, combine_method='average', scaling='minmax'))
-            clf.fit(X_train, y_train)
-            train_acc = (clf.predict(X_train) == y_train).mean()
-            test_acc = (clf.predict(X_test) == y_test).mean()
-            results.append({
-                'Dataset': dataset_name,
-                'Feature_Noise': feature_noise_str,
-                'Label_Noise': label_noise_str,
-                'Model': 'SKiP-average-minmax',
-                'C': C,
-                'k': k,
-                'Train Acc': train_acc,
-                'Test Acc': test_acc
-            })
+                # SKiP - multiply (min-max scaling)
+                clf = OneVsRestSVM(SKiP(C=C, k=k, kernel=kernel, verbose=False, combine_method='multiply', scaling='minmax'))
+                clf.fit(X_train, y_train)
+                train_acc = (clf.predict(X_train) == y_train).mean()
+                test_acc = (clf.predict(X_test) == y_test).mean()
+                results.append({
+                    'Dataset': dataset_name,
+                    'Feature_Noise': feature_noise_str,
+                    'Label_Noise': label_noise_str,
+                    'Model': 'SKiP-multiply-minmax',
+                    'Kernel': kernel,
+                    'C': C,
+                    'k': k,
+                    'Train Acc': train_acc,
+                    'Test Acc': test_acc
+                })
 
-    print(f"Completed: {dataset_name} | Feature: {feature_noise_str} | Label: {label_noise_str} | Total results: {len(results)}")
+                # SKiP - average
+                clf = OneVsRestSVM(SKiP(C=C, k=k, kernel=kernel, verbose=False, combine_method='average'))
+                clf.fit(X_train, y_train)
+                train_acc = (clf.predict(X_train) == y_train).mean()
+                test_acc = (clf.predict(X_test) == y_test).mean()
+                results.append({
+                    'Dataset': dataset_name,
+                    'Feature_Noise': feature_noise_str,
+                    'Label_Noise': label_noise_str,
+                    'Model': 'SKiP-average',
+                    'Kernel': kernel,
+                    'C': C,
+                    'k': k,
+                    'Train Acc': train_acc,
+                    'Test Acc': test_acc
+                })
+
+                # SKiP - average (min-max scaling)
+                clf = OneVsRestSVM(SKiP(C=C, k=k, kernel=kernel, verbose=False, combine_method='average', scaling='minmax'))
+                clf.fit(X_train, y_train)
+                train_acc = (clf.predict(X_train) == y_train).mean()
+                test_acc = (clf.predict(X_test) == y_test).mean()
+                results.append({
+                    'Dataset': dataset_name,
+                    'Feature_Noise': feature_noise_str,
+                    'Label_Noise': label_noise_str,
+                    'Model': 'SKiP-average-minmax',
+                    'Kernel': kernel,
+                    'C': C,
+                    'k': k,
+                    'Train Acc': train_acc,
+                    'Test Acc': test_acc
+                })
+
+    remaining = total - idx
+    print(f"[{idx}/{total}] Completed: {dataset_name} | Feature: {feature_noise_str} | Label: {label_noise_str} | Remaining: {remaining}")
     return results
 
 
@@ -255,12 +301,13 @@ def main():
     print(f"Feature noise levels: {['Clean' if x is None else x for x in feature_noise_levels]}")
     print(f"Label noise levels: {[f'{int(n*100)}%' for n in label_noise_levels]}")
     print(f"Models: NaiveSVM, ProbSVM, KNNSVM, SKiP (4 variants)")
+    print(f"Kernels: {kernels}")
     print(f"C values: {C_values}")
     print(f"k values: {k_values}")
 
     # Calculate total experiments
-    num_base_models = len(C_values) * 2  # NaiveSVM, ProbSVM
-    num_knn_models = len(C_values) * len(k_values) * 5  # KNNSVM + 4 SKiP variants
+    num_base_models = len(kernels) * len(C_values) * 2  # NaiveSVM, ProbSVM
+    num_knn_models = len(kernels) * len(C_values) * len(k_values) * 5  # KNNSVM + 4 SKiP variants
     total_per_noise_combo = num_base_models + num_knn_models
     total_experiments = total_per_noise_combo * len(feature_noise_levels) * len(label_noise_levels) * len(datasets_config)
 
@@ -273,16 +320,23 @@ def main():
 
     # Prepare all experiment configurations
     experiment_configs = []
-    for dataset_name in ['breast_cancer', 'iris_2feat', 'titanic', 'wine']:
+    for dataset_name in ['breast_cancer', 'breast_cancer_pca', 'iris', 'iris_pca', 'titanic', 'titanic_pca', 'wine', 'wine_pca']:
         for feature_noise_level in feature_noise_levels:
             for label_noise in label_noise_levels:
                 experiment_configs.append((dataset_name, feature_noise_level, label_noise, 42))
 
-    print(f"Total configurations to process: {len(experiment_configs)}\n")
+    total_configs = len(experiment_configs)
+    print(f"Total configurations to process: {total_configs}\n")
+    
+    # Add index and total to each config
+    experiment_configs_with_idx = [
+        (config[0], config[1], config[2], config[3], idx + 1, total_configs) 
+        for idx, config in enumerate(experiment_configs)
+    ]
 
     # Run experiments in parallel
     with Pool(processes=n_cpus) as pool:
-        all_results_list = pool.map(run_single_experiment, experiment_configs)
+        all_results_list = pool.map(run_single_experiment, experiment_configs_with_idx)
 
     # Flatten results list
     all_results = []
