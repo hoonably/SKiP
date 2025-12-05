@@ -10,7 +10,7 @@ from sklearn.preprocessing import StandardScaler
 from datasets import inject_noise
 from models.svm_models import NaiveSVM, ProbSVM, KNNSVM, SKiP
 from models.multi_svm import OneVsRestSVM
-from multiprocessing import Pool, cpu_count
+from multiprocessing import Pool, cpu_count, Manager
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -145,21 +145,23 @@ def run_single_experiment(args):
     Designed to be called by multiprocessing.
 
     Parameters:
-    - args: Tuple of (dataset_name, feature_noise_level, label_noise, random_state, idx, total)
+    - args: Tuple of (dataset_name, feature_noise_level, label_noise, random_state, total, counter, lock)
 
     Returns:
     - List of result dictionaries for this configuration
     """
-    dataset_name, feature_noise_level, label_noise, random_state, idx, total = args
+    dataset_name, feature_noise_level, label_noise, random_state, total, counter, lock = args
+    
+    feature_noise_str = "Clean" if feature_noise_level is None else feature_noise_level
+    label_noise_str = f"{int(label_noise * 100)}%"
+    
+    # Print start message
+    print(f"Starting: {dataset_name} | Feature: {feature_noise_str} | Label: {label_noise_str}")
 
     # Load data with feature noise and inject label noise
     X_train, X_test, y_train, y_test = load_dataset(dataset_name, feature_noise_level, label_noise, random_state)
 
     results = []
-    feature_noise_str = "Clean" if feature_noise_level is None else feature_noise_level
-    label_noise_str = f"{int(label_noise * 100)}%"
-
-    print(f"[{idx}/{total}] Starting: {dataset_name} | Feature: {feature_noise_str} | Label: {label_noise_str}")
 
     # Test each model with different C values and kernels
     for kernel in kernels:
@@ -287,8 +289,13 @@ def run_single_experiment(args):
                     'Test Acc': test_acc
                 })
 
-    remaining = total - idx
-    print(f"[{idx}/{total}] Completed: {dataset_name} | Feature: {feature_noise_str} | Label: {label_noise_str} | Remaining: {remaining}")
+    # Thread-safe counter increment and print
+    with lock:
+        counter.value += 1
+        completed = counter.value
+        remaining = total - completed
+        print(f"[{completed}/{total}] Completed: {dataset_name} | Feature: {feature_noise_str} | Label: {label_noise_str} | Remaining: {remaining}")
+    
     return results
 
 
@@ -328,15 +335,20 @@ def main():
     total_configs = len(experiment_configs)
     print(f"Total configurations to process: {total_configs}\n")
     
-    # Add index and total to each config
-    experiment_configs_with_idx = [
-        (config[0], config[1], config[2], config[3], idx + 1, total_configs) 
-        for idx, config in enumerate(experiment_configs)
+    # Create shared counter and lock for progress tracking
+    manager = Manager()
+    counter = manager.Value('i', 0)
+    lock = manager.Lock()
+    
+    # Add counter and lock to each config
+    experiment_configs_with_counter = [
+        (config[0], config[1], config[2], config[3], total_configs, counter, lock) 
+        for config in experiment_configs
     ]
 
     # Run experiments in parallel
     with Pool(processes=n_cpus) as pool:
-        all_results_list = pool.map(run_single_experiment, experiment_configs_with_idx)
+        all_results_list = pool.map(run_single_experiment, experiment_configs_with_counter)
 
     # Flatten results list
     all_results = []
