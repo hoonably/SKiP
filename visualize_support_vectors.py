@@ -319,7 +319,7 @@ def visualize_results(df):
     df['Noise_Level'] = df['Feature_Noise'] + '/' + df['Label_Noise']
     
     # Filter only breast_cancer and titanic datasets
-    selected_datasets = ['breast_cancer', 'titanic']
+    selected_datasets = ['iris_pca', 'titanic_pca']
     
     # Create subplots: 1 row x 2 columns for 2 datasets
     fig, axes = plt.subplots(1, 2, figsize=(16, 5))
@@ -351,7 +351,7 @@ def visualize_results(df):
         
         # Plot
         x = np.arange(len(noise_levels))
-        width = 0.2
+        width = 0.23
         
         # Use Tableau 10 colors
         tab10_colors = plt.cm.tab10.colors
