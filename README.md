@@ -1,5 +1,16 @@
 # SKiP - SVM with K-nearest neighbor and Probabilistic weighting
 
+<a href="https://github.com/hoonably/SKiP"><img src="https://img.shields.io/static/v1?label=Project&message=GitHub&color=blue"></a>
+<a href="https://hoonably.github.io/SKiP"><img src="https://img.shields.io/static/v1?label=Project&message=PDF&color=red"></a>
+
+**🤝 Contributors** 
+- Jeonghoon Park · [@hoonably](https://github.com/hoonably)
+- KangJun Lee · [@suri7897](https://github.com/suri7897)
+- Jaemin Kim · [@ginjae](https://github.com/ginjae)
+- Doyeol Oh · [@ohdoyoel](https://github.com/ohdoyoel)
+
+---
+
 ![Model Comparison](visualizations/comparison/comparison_iris_pca_linear.png)
 
 Robust SVM classifier implementation with noise-resistant weighting schemes. SKiP combines K-nearest neighbor distance weighting with probabilistic confidence scoring to improve classification performance on noisy datasets.
@@ -82,6 +93,7 @@ SKiP/
 │   └── make_noise_fast.py # Noise injection script
 ├── visualizations/        # Visualization scripts and outputs
 ├── results/               # Experimental results (CSV)
+├── docs/                  # Github Page
 ├── run_experiments.py     # Main experiment runner
 ├── run_baselines.py       # Baseline comparison runner
 └── datasets.py            # Dataset utilities
