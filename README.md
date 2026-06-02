@@ -50,8 +50,12 @@ cd ..
 # Main SVM experiments (NaiveSVM, ProbSVM, KNNSVM, SKiP)
 python run_experiments.py
 
+# SGD-based SVM experiments
+python run_sgd_cifar10.py
+
 # Baseline comparisons (KNN, Decision Tree, Logistic Regression)
 python run_baselines.py
+
 ```
 
 ### 4. Generate Visualizations
@@ -63,6 +67,8 @@ python visualize_heatmaps.py            # Noise robustness heatmaps
 python visualize_heatmaps_selected.py   # Selected heatmap grids
 python visualize_support_vectors.py     # Support vector analysis
 python visualize_decision_boundary.py   # Decision boundary plots
+python analyze_ann_weights.py           # ANN weight statistics
+python visualize_ann_weights.py         # ANN constraint weights
 ```
 
 ## 📊 Results
@@ -71,10 +77,12 @@ All experimental results are saved in:
 
 `results`
 - `model_comparison_results.csv` - SVM variant comparison
+- `cifar10_sgd_results.csv` - SGD-based SVM results
 - `baseline_comparison_results.csv` - Comparison with KNN, Decision Tree, Logistic Regression
 - `support_vector_comparison.csv` - Support vector analysis
 
 `visualizations` - Performance charts and heatmaps
+- `ann_weighst` - ANN constraint weights analysis
 - `comparison` - Model performance comparison charts
 - `noise_heatmap` - Robustness analysis across noise levels
 - `noise_heatmap_selected` - Curated heatmap visualizations
@@ -86,15 +94,18 @@ All experimental results are saved in:
 ```
 SKiP/
 ├── models/
-│   ├── svm_models.py      # NaiveSVM, ProbSVM, KNNSVM, SKiP implementations
-│   └── multi_svm.py       # Multi-class SVM wrapper
+│   ├── svm_models.py       # NaiveSVM, ProbSVM, KNNSVM, SKiP implementations
+│   └── multi_svm.py        # Multi-class SVM wrapper
 ├── datasets/
-│   ├── download.py        # Dataset download script
-│   └── make_noise_fast.py # Noise injection script
-├── visualizations/        # Visualization scripts and outputs
-├── results/               # Experimental results (CSV)
-├── docs/                  # Github Page
-├── run_experiments.py     # Main experiment runner
-├── run_baselines.py       # Baseline comparison runner
-└── datasets.py            # Dataset utilities
+│   ├── download.py         # Dataset download script
+│   ├── cifar10.py          # Utility for downloading CIFAR-10 dataset and PCA
+│   ├── make_noise_cifar.py # Utility for Noise injection for CIFAR-10 dataset
+│   └── make_noise_fast.py  # Noise injection script
+├── visualizations/         # Visualization scripts and outputs
+├── results/                # Experimental results (CSV)
+├── docs/                   # Github Page
+├── run_experiments.py      # Main experiment runner
+├── run_sgd_cifar10.py      # SGD-based SVM experiment runner
+├── run_baselines.py        # Baseline comparison runner
+└── datasets.py             # Dataset utilities
 ```
