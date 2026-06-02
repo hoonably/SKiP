@@ -83,7 +83,7 @@ All experimental results are saved in:
 - `support_vector_comparison.csv` - Support vector analysis
 
 `visualizations` - Performance charts and heatmaps
-- `ann_weighst` - ANN constraint weights analysis
+- `ann_weights` - ANN constraint weights analysis
 - `comparison` - Model performance comparison charts
 - `noise_heatmap` - Robustness analysis across noise levels
 - `noise_heatmap_selected` - Curated heatmap visualizations
