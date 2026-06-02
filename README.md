@@ -2,6 +2,7 @@
 
 <a href="https://github.com/hoonably/SKiP"><img src="https://img.shields.io/static/v1?label=Project&message=GitHub&color=blue"></a>
 <a href="https://hoonably.github.io/SKiP"><img src="https://img.shields.io/static/v1?label=Project&message=PDF&color=red"></a>
+<a href="https://hoonably.github.io/SKiP/poster"><img src="https://img.shields.io/static/v1?label=Project&message=Poster&color=purple"></a>
 
 **🤝 Contributors** 
 - Jeonghoon Park · [@hoonably](https://github.com/hoonably)
