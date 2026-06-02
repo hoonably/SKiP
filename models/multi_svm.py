@@ -40,14 +40,22 @@ class OneVsRestSVM(BaseEstimator, ClassifierMixin):
         
         # Train one classifier per class
         for i in range(n_classes):
-            # Create binary labels: +1 for current class, -1 for rest
+            # Create binary labels: +1 for current class, 0 for rest
             y_binary = np.where(y_encoded == i, 1, 0)
-            
+
             # Clone estimator with same parameters
             from sklearn.base import clone
             clf = clone(self.estimator)
-            clf.fit(X, y_binary)
-            
+
+            # Pass original multiclass y for models that benefit from it
+            # (e.g. ProbSVM_SGD: computes per-original-class Gaussians instead
+            #  of one Gaussian for the heterogeneous "rest" class)
+            try:
+                clf.fit(X, y_binary, y_original=y)
+            except TypeError:
+                # Estimator doesn't accept y_original → standard binary fit
+                clf.fit(X, y_binary)
+
             self.estimators_.append(clf)
         
         return self

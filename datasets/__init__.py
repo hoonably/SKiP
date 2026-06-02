@@ -3,14 +3,6 @@ from numpy.random import default_rng
 from sklearn.preprocessing import StandardScaler
 
 def precompute_class_stats(X_train, y_train, percentile=99):
-    """
-    각 클래스별로:
-      - mean (mu)
-      - covariance (cov)
-      - Cholesky factor (L)  s.t. cov = L @ L.T
-      - Mahalanobis distance의 percentile-th threshold (tau)
-    를 한 번씩만 계산해서 캐싱.
-    """
     class_stats = {}
     classes = np.unique(y_train)
 
@@ -42,9 +34,7 @@ def inject_noise(X_train, y_train, feature_noise=0.0, label_noise=0.0, random_st
     y = y_train.copy()
     d = X.shape[1]
 
-    # ---------------------------------------------
-    # 1. Type II Outliers (Label Noise)
-    # ---------------------------------------------
+
     if label_noise > 0:
         n_label_flips = int(len(y) * label_noise)
         flip_indices = rng.choice(len(y), n_label_flips, replace=False)
@@ -78,9 +68,7 @@ def inject_noise(X_train, y_train, feature_noise=0.0, label_noise=0.0, random_st
             X = np.vstack([X, new_X])
             y = np.concatenate([y, new_y])
 
-    # ---------------------------------------------
-    # 2. Type I Outliers (Feature Noise)
-    # ---------------------------------------------
+
     if feature_noise > 0:
         class_stats = precompute_class_stats(X_train, y_train, percentile=99)
 
